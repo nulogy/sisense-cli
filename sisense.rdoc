@@ -1,0 +1,5 @@
+= sisense
+
+Generate this with
+    sisense rdoc
+After you have described your command line interface

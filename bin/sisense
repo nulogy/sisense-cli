@@ -1,0 +1,82 @@
+#!/usr/bin/env ruby
+require 'gli'
+require 'sisense'
+
+require 'highline/import'
+
+class SisenseCli
+  extend GLI::App
+
+  include Sisense::Commands::Config
+  include Sisense::Commands::Dashboard
+  include Sisense::Commands::Elasticube
+
+  version Sisense::VERSION
+
+  program_desc 'Command line interface for interacting with Sisense'
+
+  subcommand_option_handling :normal
+  arguments :strict
+
+  desc 'Username of your sisense user'
+  arg_name 'username'
+  flag [:u,:username]
+
+  desc 'Password of your sisense user'
+  arg_name 'password'
+  flag [:p,:password]
+
+  desc 'API key to use'
+  arg_name 'api-key'
+  flag [:k,:'api-key']
+
+  desc 'Hostname of the sisense instance'
+  arg_name 'http://sisense.example.com'
+  flag [:h,:hostname]
+
+  pre do |global,command,options,args|
+
+    override_config = Sisense::ConfigLoader.from_globals(global)
+
+    if override_config.empty? && !Sisense::ConfigFile.exist?
+      puts "Could not find a valid config file."
+      @config = Sisense::ConfigLoader.from_prompt
+
+      persist = choose do |menu|
+        menu.prompt = "Would you like to save these settings to #{ConfigFile::FILENAME}?"
+
+        menu.choice(:yes) { ConfigFile.persist(config) }
+        menu.choice(:no)
+      end
+    else
+      file_config = Sisense::ConfigLoader.from_file
+      @config = Sisense::Config.merge(file_config, override_config)
+    end
+
+    if !@config.valid?
+      exit_now!("Configuration is not valid #{@config}")
+    end
+
+    # Pre logic here
+    # Return true to proceed; false to abort and not call the
+    # chosen command
+    # Use skips_pre before a command to skip this block
+    # on that command only
+    true
+  end
+
+  post do |global,command,options,args|
+    # Post logic here
+    # Use skips_post before a command to skip this
+    # block on that command only
+  end
+
+  on_error do |exception|
+    # Error logic here
+    # return false to skip default error handling
+    true
+  end
+end
+
+
+exit SisenseCli.run(ARGV)
